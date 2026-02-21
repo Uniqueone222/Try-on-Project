@@ -13,10 +13,13 @@ const TryOnCanvas = ({ currentShirt }) => {
     y: 0
   })
 
+  // Get API URL from environment or use default
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
   // Shirt images mapping
   const shirtImages = {
-    shirt1: '/api/shirts/shirt1.png',
-    shirt2: '/api/shirts/shirt2.png'
+    shirt1: `${apiUrl}/shirts/shirt1.png`,
+    shirt2: `${apiUrl}/shirts/shirt2.png`
   }
 
   // Initialize MediaPipe Pose

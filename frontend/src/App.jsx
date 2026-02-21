@@ -19,8 +19,11 @@ function App() {
       const canvas = document.querySelector('canvas')
       const imageData = canvas.toDataURL('image/png')
       
+      // Get API URL from environment
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      
       // Send to backend for processing
-      const response = await fetch('/api/screenshot', {
+      const response = await fetch(`${apiUrl}/screenshot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
