@@ -1,0 +1,65 @@
+.controls {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  width: 100%;
+  text-align: center;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 10px;
+}
+
+button {
+  padding: 12px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.2s;
+}
+
+button:active {
+  background-color: #0056b3;
+}
+
+button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.shirt-btn {
+  background-color: #28a745;
+}
+
+.shirt-btn:active {
+  background-color: #218838;
+}
+
+.screenshot-btn {
+  background-color: #ffc107;
+  color: black;
+}
+
+.screenshot-btn:active {
+  background-color: #e0a800;
+}
+
+@media (max-width: 600px) {
+  button {
+    padding: 10px 15px;
+    font-size: 14px;
+  }
+
+  .controls {
+    bottom: 10px;
+    gap: 5px;
+  }
+}
