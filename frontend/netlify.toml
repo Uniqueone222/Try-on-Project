@@ -1,0 +1,11 @@
+[build]
+command = "npm install && npm run build"
+publish = "dist"
+
+[env.production]
+VITE_API_URL = "https://your-api-domain.com"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
