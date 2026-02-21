@@ -65,7 +65,8 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
     shirt.onerror = null
     
     shirt.onload = () => {
-      console.log(`Shirt ${currentShirt} loaded successfully`)
+      console.log(`Shirt loaded: ${currentShirt}`)
+      console.log(`Dimensions: ${shirt.naturalWidth}x${shirt.naturalHeight}`)
       setShirtLoaded(true)
     }
     
@@ -76,11 +77,14 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
     
     // Use uploaded shirt if available and selected
     if (currentShirt === 'custom' && uploadedShirt) {
+      console.log('Loading custom uploaded shirt:', uploadedShirt.name)
+      shirt.crossOrigin = 'anonymous'
       shirt.src = uploadedShirt.image
     } else {
+      console.log('Loading preset shirt:', currentShirt)
       shirt.src = shirtImages[currentShirt]
     }
-  }, [currentShirt, uploadedShirt, shirtImages, apiUrl])
+  }, [currentShirt, uploadedShirt, shirtImages])
 
   // Start camera
   useEffect(() => {
@@ -222,8 +226,17 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
       const rightHip = landmarks[24]
 
       // Check if shoulders are detected
-      if (!leftShoulder || !rightShoulder) return
-      if (leftShoulder.visibility < 0.3 || rightShoulder.visibility < 0.3) return
+      if (!leftShoulder || !rightShoulder) {
+        console.warn('Shoulders not detected')
+        return
+      }
+      if (leftShoulder.visibility < 0.1 || rightShoulder.visibility < 0.1) {
+        console.warn('Shoulders not visible enough:', {
+          left: leftShoulder.visibility,
+          right: rightShoulder.visibility
+        })
+        return
+      }
 
       const shoulderX1 = leftShoulder.x * canvasWidth
       const shoulderY1 = leftShoulder.y * canvasHeight
@@ -235,7 +248,15 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
 
       // Only draw shirt if it loaded successfully
       const shirt = shirtRef.current
-      if (!shirtLoaded || !shirt.naturalWidth || !shirt.naturalHeight) {
+      if (!shirtLoaded) {
+        console.warn('Shirt not loaded yet')
+        return
+      }
+      if (!shirt.naturalWidth || !shirt.naturalHeight) {
+        console.warn('Shirt dimensions missing:', {
+          width: shirt.naturalWidth,
+          height: shirt.naturalHeight
+        })
         return
       }
 

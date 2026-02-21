@@ -40,7 +40,7 @@ function App() {
           image: dataUrl
         })
         setCurrentShirt('custom')
-        console.log('Shirt uploaded successfully')
+        console.log('Shirt uploaded:', file.name, 'Size:', file.size)
       }
     }
     
@@ -49,6 +49,9 @@ function App() {
     }
     
     reader.readAsDataURL(file)
+    
+    // Reset input
+    event.target.value = ''
   }
 
   const handleScreenshot = async () => {

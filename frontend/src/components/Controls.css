@@ -51,6 +51,10 @@ button:disabled {
   background-color: #e68900;
 }
 
+.upload-btn.active {
+  background-color: #4CAF50;
+}
+
 .screenshot-btn {
   background-color: #ffc107;
   color: black;
@@ -58,6 +62,38 @@ button:disabled {
 
 .screenshot-btn:active {
   background-color: #e0a800;
+}
+
+.debug-btn {
+  background-color: #666;
+  font-size: 14px;
+  padding: 10px 15px;
+}
+
+.debug-btn:active {
+  background-color: #444;
+}
+
+.debug-panel {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: #0f0;
+  border: 2px solid #0f0;
+  border-radius: 5px;
+  padding: 15px;
+  width: 90%;
+  max-width: 400px;
+  z-index: 9;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.debug-item {
+  margin: 8px 0;
+  padding: 5px;
 }
 
 @media (max-width: 600px) {
