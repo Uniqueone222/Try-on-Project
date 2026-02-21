@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './TryOnCanvas.css'
 
 const TryOnCanvas = ({ currentShirt }) => {
@@ -6,6 +6,7 @@ const TryOnCanvas = ({ currentShirt }) => {
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
   const shirtRef = useRef(new Image())
+  const [shirtLoaded, setShirtLoaded] = useState(false)
   const smoothValuesRef = useRef({
     width: 0,
     height: 0,
@@ -56,17 +57,25 @@ const TryOnCanvas = ({ currentShirt }) => {
 
   // Load shirt image
   useEffect(() => {
+    setShirtLoaded(false)
     const shirt = shirtRef.current
-    shirt.src = shirtImages[currentShirt]
+    
+    // Reset previous handlers
+    shirt.onload = null
+    shirt.onerror = null
     
     shirt.onload = () => {
-      console.log(`Shirt ${currentShirt} loaded`)
+      console.log(`Shirt ${currentShirt} loaded successfully`)
+      setShirtLoaded(true)
     }
     
-    shirt.onerror = () => {
-      console.error(`Failed to load shirt ${currentShirt}`)
+    shirt.onerror = (error) => {
+      console.error(`Failed to load shirt ${currentShirt}:`, error)
+      setShirtLoaded(false)
     }
-  }, [currentShirt])
+    
+    shirt.src = shirtImages[currentShirt]
+  }, [currentShirt, shirtImages, apiUrl])
 
   // Start camera
   useEffect(() => {
@@ -120,56 +129,141 @@ const TryOnCanvas = ({ currentShirt }) => {
 
   // Process pose results
   const onPoseResults = (results) => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const ctx = ctxRef.current
+    try {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      const ctx = ctxRef.current
 
-    if (!video.videoWidth || !ctx) return
+      if (!video.videoWidth || !ctx || !canvas) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
 
-    // Draw camera frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      // Draw camera frame
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      } catch (error) {
+        console.warn('Failed to draw video frame:', error)
+        return
+      }
 
-    if (!results.poseLandmarks) return
+      if (!results.poseLandmarks || results.poseLandmarks.length === 0) return
 
-    const landmarks = results.poseLandmarks
-    const leftShoulder = landmarks[11]
-    const rightShoulder = landmarks[12]
+      const landmarks = results.poseLandmarks
+      
+      // Draw pose landmarks visualization
+      const canvasWidth = canvas.width
+      const canvasHeight = canvas.height
+      
+      // Draw skeleton connections
+      ctx.strokeStyle = '#00FF00'
+      ctx.lineWidth = 2
+      ctx.fillStyle = '#00FF00'
+      
+      // Key connections for skeleton
+      const connections = [
+        [11, 12], // shoulders
+        [11, 13], // left shoulder to elbow
+        [13, 15], // left elbow to wrist
+        [12, 14], // right shoulder to elbow
+        [14, 16], // right elbow to wrist
+        [11, 23], // left shoulder to hip
+        [12, 24], // right shoulder to hip
+        [23, 24], // hips
+        [23, 25], // left hip to knee
+        [25, 27], // left knee to ankle
+        [24, 26], // right hip to knee
+        [26, 28], // right knee to ankle
+      ]
+      
+      // Draw connections
+      connections.forEach(([start, end]) => {
+        const startLandmark = landmarks[start]
+        const endLandmark = landmarks[end]
+        
+        if (startLandmark && endLandmark && 
+            startLandmark.visibility > 0.3 && endLandmark.visibility > 0.3) {
+          ctx.beginPath()
+          ctx.moveTo(startLandmark.x * canvasWidth, startLandmark.y * canvasHeight)
+          ctx.lineTo(endLandmark.x * canvasWidth, endLandmark.y * canvasHeight)
+          ctx.stroke()
+        }
+      })
+      
+      // Draw landmark points
+      landmarks.forEach((landmark, idx) => {
+        if (landmark.visibility > 0.3) {
+          const x = landmark.x * canvasWidth
+          const y = landmark.y * canvasHeight
+          
+          ctx.beginPath()
+          ctx.arc(x, y, 5, 0, 2 * Math.PI)
+          ctx.fill()
+          
+          // Draw confidence text for key points
+          if ([11, 12, 23, 24].includes(idx)) {
+            ctx.fillStyle = '#FFFFFF'
+            ctx.font = '12px Arial'
+            ctx.fillText(`${idx}`, x + 8, y)
+            ctx.fillStyle = '#00FF00'
+          }
+        }
+      })
+      
+      // Highlight shoulders and hips
+      const leftShoulder = landmarks[11]
+      const rightShoulder = landmarks[12]
+      const leftHip = landmarks[23]
+      const rightHip = landmarks[24]
 
-    const shoulderX1 = leftShoulder.x * canvas.width
-    const shoulderY1 = leftShoulder.y * canvas.height
-    const shoulderX2 = rightShoulder.x * canvas.width
+      // Check if shoulders are detected
+      if (!leftShoulder || !rightShoulder) return
+      if (leftShoulder.visibility < 0.3 || rightShoulder.visibility < 0.3) return
 
-    const shoulderWidth = Math.abs(shoulderX2 - shoulderX1)
+      const shoulderX1 = leftShoulder.x * canvasWidth
+      const shoulderY1 = leftShoulder.y * canvasHeight
+      const shoulderX2 = rightShoulder.x * canvasWidth
 
-    if (shoulderWidth < 50) return // ignore bad detection
+      const shoulderWidth = Math.abs(shoulderX2 - shoulderX1)
 
-    const shirt = shirtRef.current
-    if (!shirt.complete) return
+      if (shoulderWidth < 50) return // ignore bad detection
 
-    const shirtAspectRatio = shirt.naturalHeight / shirt.naturalWidth
-    const targetWidth = shoulderWidth * 1.4
-    const targetHeight = targetWidth * shirtAspectRatio
-    const centerX = (shoulderX1 + shoulderX2) / 2
-    const targetX = centerX - targetWidth / 2
-    const targetY = shoulderY1 - targetHeight * 0.15
+      // Only draw shirt if it loaded successfully
+      const shirt = shirtRef.current
+      if (!shirtLoaded || !shirt.naturalWidth || !shirt.naturalHeight) {
+        return
+      }
 
-    // Smooth values
-    smoothValuesRef.current.width = smoothValuesRef.current.width * 0.7 + targetWidth * 0.3
-    smoothValuesRef.current.height = smoothValuesRef.current.height * 0.7 + targetHeight * 0.3
-    smoothValuesRef.current.x = smoothValuesRef.current.x * 0.7 + targetX * 0.3
-    smoothValuesRef.current.y = smoothValuesRef.current.y * 0.7 + targetY * 0.3
+      const shirtAspectRatio = shirt.naturalHeight / shirt.naturalWidth
+      const targetWidth = shoulderWidth * 1.4
+      const targetHeight = targetWidth * shirtAspectRatio
+      const centerX = (shoulderX1 + shoulderX2) / 2
+      const targetX = centerX - targetWidth / 2
+      const targetY = shoulderY1 - targetHeight * 0.15
 
-    // Draw shirt
-    ctx.drawImage(
-      shirt,
-      smoothValuesRef.current.x,
-      smoothValuesRef.current.y,
-      smoothValuesRef.current.width,
-      smoothValuesRef.current.height
-    )
+      // Smooth values
+      smoothValuesRef.current.width = smoothValuesRef.current.width * 0.7 + targetWidth * 0.3
+      smoothValuesRef.current.height = smoothValuesRef.current.height * 0.7 + targetHeight * 0.3
+      smoothValuesRef.current.x = smoothValuesRef.current.x * 0.7 + targetX * 0.3
+      smoothValuesRef.current.y = smoothValuesRef.current.y * 0.7 + targetY * 0.3
+
+      // Draw shirt with error handling
+      try {
+        ctx.globalAlpha = 0.8
+        ctx.drawImage(
+          shirt,
+          smoothValuesRef.current.x,
+          smoothValuesRef.current.y,
+          smoothValuesRef.current.width,
+          smoothValuesRef.current.height
+        )
+        ctx.globalAlpha = 1
+      } catch (error) {
+        console.warn('Failed to draw shirt image:', error)
+      }
+    } catch (error) {
+      console.error('Pose detection processing error:', error)
+    }
   }
 
   // Connect camera to pose detector and start detection loop
