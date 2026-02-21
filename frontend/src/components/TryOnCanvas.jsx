@@ -14,9 +14,6 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
     y: 0
   })
 
-  // Get API URL from environment or use default
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
   // Initialize MediaPipe Pose
   const poseRef = useRef(null)
 
@@ -53,32 +50,37 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
   useEffect(() => {
     setShirtLoaded(false)
     const shirt = shirtRef.current
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    
+    // Add timestamp to help identify effect calls
+    const timestamp = Date.now()
+    console.log(`[${timestamp}] Shirt loading effect triggered for: ${currentShirt}`)
     
     // Reset previous handlers
     shirt.onload = null
     shirt.onerror = null
     
     shirt.onload = () => {
-      console.log(`Shirt loaded: ${currentShirt}`)
-      console.log(`Dimensions: ${shirt.naturalWidth}x${shirt.naturalHeight}`)
+      console.log(`[${timestamp}] Shirt loaded: ${currentShirt}`)
+      console.log(`[${timestamp}] Dimensions: ${shirt.naturalWidth}x${shirt.naturalHeight}`)
       setShirtLoaded(true)
     }
     
     shirt.onerror = (error) => {
-      console.error(`Failed to load shirt ${currentShirt}:`, error)
+      console.error(`[${timestamp}] Failed to load shirt ${currentShirt}:`, error)
       setShirtLoaded(false)
     }
     
     // Use uploaded shirt if available and selected
     if (currentShirt === 'custom' && uploadedShirt) {
-      console.log('Loading custom uploaded shirt:', uploadedShirt.name)
+      console.log(`[${timestamp}] Loading custom uploaded shirt: ${uploadedShirt.name}`)
       shirt.crossOrigin = 'anonymous'
       shirt.src = uploadedShirt.image
     } else {
-      console.log('Loading preset shirt:', currentShirt)
+      console.log(`[${timestamp}] Loading preset shirt: ${currentShirt}`)
       shirt.src = `${apiUrl}/shirts/${currentShirt}.png`
     }
-  }, [currentShirt, uploadedShirt, apiUrl])
+  }, [currentShirt, uploadedShirt])
 
   // Start camera
   useEffect(() => {
