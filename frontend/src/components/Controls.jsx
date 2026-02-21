@@ -1,6 +1,13 @@
+import { useRef } from 'react'
 import './Controls.css'
 
-const Controls = ({ onShirtChange, onScreenshot, loading }) => {
+const Controls = ({ onShirtChange, onShirtUpload, onScreenshot, loading, hasUploadedShirt }) => {
+  const fileInputRef = useRef(null)
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
   return (
     <div className="controls">
       <button 
@@ -15,12 +22,29 @@ const Controls = ({ onShirtChange, onScreenshot, loading }) => {
       >
         Shirt 2
       </button>
+      
+      <button 
+        className="upload-btn"
+        onClick={handleUploadClick}
+      >
+        {hasUploadedShirt ? '📸 Custom' : '⬆ Upload Shirt'}
+      </button>
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={onShirtUpload}
+        style={{ display: 'none' }}
+        aria-label="Upload shirt image"
+      />
+      
       <button 
         className="screenshot-btn"
         onClick={onScreenshot}
         disabled={loading}
       >
-        {loading ? 'Saving...' : 'Screenshot'}
+        {loading ? 'Saving...' : '📷 Screenshot'}
       </button>
     </div>
   )

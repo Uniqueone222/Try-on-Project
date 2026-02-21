@@ -7,9 +7,48 @@ function App() {
   const [currentShirt, setCurrentShirt] = useState('shirt1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [uploadedShirt, setUploadedShirt] = useState(null)
 
   const changeShirt = (shirtId) => {
     setCurrentShirt(shirtId)
+  }
+
+  const handleShirtUpload = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be smaller than 5MB')
+      return
+    }
+
+    setError(null)
+    const reader = new FileReader()
+    
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result
+      if (typeof dataUrl === 'string') {
+        setUploadedShirt({
+          name: file.name,
+          image: dataUrl
+        })
+        setCurrentShirt('custom')
+        console.log('Shirt uploaded successfully')
+      }
+    }
+    
+    reader.onerror = () => {
+      setError('Failed to read file')
+    }
+    
+    reader.readAsDataURL(file)
   }
 
   const handleScreenshot = async () => {
@@ -47,11 +86,16 @@ function App() {
   return (
     <div className="app-container">
       {error && <div className="error-message">{error}</div>}
-      <TryOnCanvas currentShirt={currentShirt} />
+      <TryOnCanvas 
+        currentShirt={currentShirt} 
+        uploadedShirt={uploadedShirt}
+      />
       <Controls 
-        onShirtChange={changeShirt} 
+        onShirtChange={changeShirt}
+        onShirtUpload={handleShirtUpload}
         onScreenshot={handleScreenshot}
         loading={loading}
+        hasUploadedShirt={!!uploadedShirt}
       />
     </div>
   )

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './TryOnCanvas.css'
 
-const TryOnCanvas = ({ currentShirt }) => {
+const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
@@ -74,8 +74,13 @@ const TryOnCanvas = ({ currentShirt }) => {
       setShirtLoaded(false)
     }
     
-    shirt.src = shirtImages[currentShirt]
-  }, [currentShirt, shirtImages, apiUrl])
+    // Use uploaded shirt if available and selected
+    if (currentShirt === 'custom' && uploadedShirt) {
+      shirt.src = uploadedShirt.image
+    } else {
+      shirt.src = shirtImages[currentShirt]
+    }
+  }, [currentShirt, uploadedShirt, shirtImages, apiUrl])
 
   // Start camera
   useEffect(() => {

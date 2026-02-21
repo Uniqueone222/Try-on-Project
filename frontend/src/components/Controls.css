@@ -43,6 +43,14 @@ button:disabled {
   background-color: #218838;
 }
 
+.upload-btn {
+  background-color: #ff9800;
+}
+
+.upload-btn:active {
+  background-color: #e68900;
+}
+
 .screenshot-btn {
   background-color: #ffc107;
   color: black;
