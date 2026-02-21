@@ -17,12 +17,6 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
   // Get API URL from environment or use default
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-  // Shirt images mapping
-  const shirtImages = {
-    shirt1: `${apiUrl}/shirts/shirt1.png`,
-    shirt2: `${apiUrl}/shirts/shirt2.png`
-  }
-
   // Initialize MediaPipe Pose
   const poseRef = useRef(null)
 
@@ -82,9 +76,9 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
       shirt.src = uploadedShirt.image
     } else {
       console.log('Loading preset shirt:', currentShirt)
-      shirt.src = shirtImages[currentShirt]
+      shirt.src = `${apiUrl}/shirts/${currentShirt}.png`
     }
-  }, [currentShirt, uploadedShirt, shirtImages])
+  }, [currentShirt, uploadedShirt, apiUrl])
 
   // Start camera
   useEffect(() => {
