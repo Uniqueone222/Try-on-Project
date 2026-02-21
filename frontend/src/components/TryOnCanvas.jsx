@@ -40,6 +40,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
     x: 0,
     y: 0
   })
+  const frameCountRef = useRef(0)
 
   // Get current clothing config
   const currentConfig = CLOTHING_CONFIGS[clothingType] || CLOTHING_CONFIGS.shirt
@@ -76,10 +77,14 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
     initPose()
   }, [])
 
-  // Refresh shirt image every 5 seconds
+  // Refresh shirt image every 5 seconds (without resetting load state)
   useEffect(() => {
     const interval = setInterval(() => {
-      setRefreshCounter(prev => prev + 1)
+      // Just force canvas re-render, don't reset loaded state
+      if (shirtLoadedRef.current && shirtRef.current.src) {
+        // Re-request pose detection to refresh without unloading shirt
+        setRefreshCounter(prev => prev + 1)
+      }
     }, 5000)
 
     return () => clearInterval(interval)
@@ -268,6 +273,8 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       // Highlight shoulders and hips
       const leftShoulder = landmarks[11]
       const rightShoulder = landmarks[12]
+      const leftWrist = landmarks[15]
+      const rightWrist = landmarks[16]
       const leftHip = landmarks[23]
       const rightHip = landmarks[24]
 
@@ -287,6 +294,40 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       const shoulderX1 = leftShoulder.x * canvasWidth
       const shoulderY1 = leftShoulder.y * canvasHeight
       const shoulderX2 = rightShoulder.x * canvasWidth
+      const shoulderY2 = rightShoulder.y * canvasHeight
+
+      // Calculate shoulder angle (rotation)
+      const shoulderAngle = Math.atan2(shoulderY2 - shoulderY1, shoulderX2 - shoulderX1)
+      
+      // Debug: Log angles periodically (every 30 frames)
+      if (frameCountRef.current % 30 === 0) {
+        console.log('Pose angles:', {
+          shoulderAngleDeg: (shoulderAngle * 180 / Math.PI).toFixed(1),
+          leftArmAngleDeg: (leftArmAngle * 180 / Math.PI).toFixed(1),
+          rightArmAngleDeg: (rightArmAngle * 180 / Math.PI).toFixed(1)
+        })
+      }
+      frameCountRef.current++
+      
+      // Get wrist positions for sleeve angles (if visible)
+      let leftWristX = shoulderX1
+      let leftWristY = shoulderY1
+      let rightWristX = shoulderX2
+      let rightWristY = shoulderY2
+      let leftArmAngle = 0
+      let rightArmAngle = 0
+      
+      if (leftWrist && leftWrist.visibility > 0.1) {
+        leftWristX = leftWrist.x * canvasWidth
+        leftWristY = leftWrist.y * canvasHeight
+        leftArmAngle = Math.atan2(leftWristY - shoulderY1, leftWristX - shoulderX1)
+      }
+      
+      if (rightWrist && rightWrist.visibility > 0.1) {
+        rightWristX = rightWrist.x * canvasWidth
+        rightWristY = rightWrist.y * canvasHeight
+        rightArmAngle = Math.atan2(rightWristY - shoulderY2, rightWristX - shoulderX2)
+      }
 
       const shoulderWidth = Math.abs(shoulderX2 - shoulderX1)
 
@@ -374,8 +415,20 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       smoothValuesRef.current.x = smoothValuesRef.current.x * 0.7 + targetX * 0.3
       smoothValuesRef.current.y = smoothValuesRef.current.y * 0.7 + targetY * 0.3
 
-      // Draw shirt with error handling
+      // Draw shirt with rotation based on shoulder angle
       try {
+        ctx.save()
+        
+        // Calculate rotation center (shoulder midpoint)
+        const rotationCenterX = (shoulderX1 + shoulderX2) / 2
+        const rotationCenterY = (shoulderY1 + shoulderY2) / 2
+        
+        // Apply rotation transformation
+        ctx.translate(rotationCenterX, rotationCenterY)
+        ctx.rotate(shoulderAngle)
+        ctx.translate(-rotationCenterX, -rotationCenterY)
+        
+        // Draw shirt
         ctx.globalAlpha = 0.8
         ctx.drawImage(
           shirt,
@@ -385,6 +438,49 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
           smoothValuesRef.current.height
         )
         ctx.globalAlpha = 1
+        
+        ctx.restore()
+        
+        // Draw sleeves based on arm angles
+        const sleeveLength = targetHeight * 0.4  // Sleeve extends from shoulder
+        const sleeveWidth = targetWidth * 0.15   // Sleeve width relative to shirt
+        
+        // Left sleeve (follows left arm)
+        if (leftWrist && leftWrist.visibility > 0.1) {
+          ctx.save()
+          ctx.translate(shoulderX1, shoulderY1)
+          ctx.rotate(leftArmAngle)
+          
+          // Draw left sleeve
+          ctx.fillStyle = 'rgba(100, 150, 255, 0.3)'  // Semi-transparent blue overlay
+          ctx.fillRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
+          
+          // Sleeve end outline
+          ctx.strokeStyle = 'rgba(100, 150, 255, 0.6)'
+          ctx.lineWidth = 2
+          ctx.strokeRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
+          
+          ctx.restore()
+        }
+        
+        // Right sleeve (follows right arm)
+        if (rightWrist && rightWrist.visibility > 0.1) {
+          ctx.save()
+          ctx.translate(shoulderX2, shoulderY2)
+          ctx.rotate(rightArmAngle)
+          
+          // Draw right sleeve
+          ctx.fillStyle = 'rgba(100, 150, 255, 0.3)'  // Semi-transparent blue overlay
+          ctx.fillRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
+          
+          // Sleeve end outline
+          ctx.strokeStyle = 'rgba(100, 150, 255, 0.6)'
+          ctx.lineWidth = 2
+          ctx.strokeRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
+          
+          ctx.restore()
+        }
+        
       } catch (error) {
         console.warn('Failed to draw shirt image:', error)
       }
