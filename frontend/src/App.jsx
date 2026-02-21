@@ -5,12 +5,17 @@ import './App.css'
 
 function App() {
   const [currentShirt, setCurrentShirt] = useState('shirt1')
+  const [clothingType, setClothingType] = useState('shirt') // shirt, pants, jeans
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [uploadedShirt, setUploadedShirt] = useState(null)
 
   const changeShirt = (shirtId) => {
     setCurrentShirt(shirtId)
+  }
+
+  const changeClothingType = (type) => {
+    setClothingType(type)
   }
 
   const handleShirtUpload = async (event) => {
@@ -139,9 +144,12 @@ function App() {
       <TryOnCanvas 
         currentShirt={currentShirt} 
         uploadedShirt={uploadedShirt}
+        clothingType={clothingType}
       />
       <Controls 
         onShirtChange={changeShirt}
+        onClothingTypeChange={changeClothingType}
+        clothingType={clothingType}
         onShirtUpload={handleShirtUpload}
         onScreenshot={handleScreenshot}
         loading={loading}

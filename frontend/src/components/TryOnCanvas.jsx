@@ -1,7 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import './TryOnCanvas.css'
 
-const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
+// Clothing config templates (width, length, fit, etc.)
+const CLOTHING_CONFIGS = {
+  shirt: {
+    name: 'T-Shirt',
+    shoulderScale: 1.4,
+    lengthRatio: 0.75,
+    hipSpreadFactor: 1.0,  // Standard fit at hips
+    startYOffset: 0.15
+  },
+  pants: {
+    name: 'Pants',
+    shoulderScale: 1.1,
+    lengthRatio: 1.4,  // Longer - extends to ankles
+    hipSpreadFactor: 1.2,  // Wider at hips for pants
+    startYOffset: 0.28  // Start at hip level
+  },
+  jeans: {
+    name: 'Jeans',
+    shoulderScale: 1.0,
+    lengthRatio: 1.45,  // Similar to pants
+    hipSpreadFactor: 1.15,  // Slightly less spread than pants
+    startYOffset: 0.28
+  }
+}
+
+const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
@@ -15,6 +40,9 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
     x: 0,
     y: 0
   })
+
+  // Get current clothing config
+  const currentConfig = CLOTHING_CONFIGS[clothingType] || CLOTHING_CONFIGS.shirt
 
   // Initialize MediaPipe Pose
   const poseRef = useRef(null)
@@ -264,6 +292,26 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
 
       if (shoulderWidth < 50) return // ignore bad detection
 
+      // Calculate hip positions with spread factor (for pants/jeans)
+      let hipSpreadX1 = shoulderX1
+      let hipSpreadX2 = shoulderX2
+      if (leftHip && rightHip && leftHip.visibility > 0.1 && rightHip.visibility > 0.1) {
+        const hipX1 = leftHip.x * canvasWidth
+        const hipX2 = rightHip.x * canvasWidth
+        const hipWidth = Math.abs(hipX2 - hipX1)
+        
+        // Apply hip spread factor (stretches hips for pants/jeans fit)
+        const hipCenter = (hipX1 + hipX2) / 2
+        hipSpreadX1 = hipCenter - (hipWidth * currentConfig.hipSpreadFactor) / 2
+        hipSpreadX2 = hipCenter + (hipWidth * currentConfig.hipSpreadFactor) / 2
+        
+        console.log('Hip spread applied:', {
+          factor: currentConfig.hipSpreadFactor,
+          originalWidth: hipWidth.toFixed(0),
+          newWidth: (hipSpreadX2 - hipSpreadX1).toFixed(0)
+        })
+      }
+
       // Only draw shirt if it loaded successfully
       const shirt = shirtRef.current
       if (!shirtLoadedRef.current) {
@@ -309,15 +357,15 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
         console.log('Using custom shirt proportions for alignment', {
           scale: scale.toFixed(2),
           bodyShoulderWidth: bodyShoulderWidth.toFixed(0),
-          shirtTargetWidth: targetWidth.toFixed(0)
+          shirtTargetWidth: targetWidth.toFixed(0),
+          clothingType: currentConfig.name
         })
       } else {
-        // Default alignment for preset shirts
-        const shirtAspectRatio = shirt.naturalHeight / shirt.naturalWidth
-        targetWidth = bodyShoulderWidth * 1.4
-        targetHeight = targetWidth * shirtAspectRatio
+        // Default alignment for preset shirts - use clothing config
+        targetWidth = bodyShoulderWidth * currentConfig.shoulderScale
+        targetHeight = targetWidth * (shirt.naturalHeight / shirt.naturalWidth) * currentConfig.lengthRatio
         targetX = centerX - targetWidth / 2
-        targetY = shoulderY1 - targetHeight * 0.15
+        targetY = shoulderY1 - targetHeight * currentConfig.startYOffset
       }
 
       // Smooth values for animation

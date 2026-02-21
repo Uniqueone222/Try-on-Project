@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import './Controls.css'
 
-const Controls = ({ onShirtChange, onShirtUpload, onScreenshot, loading, hasUploadedShirt }) => {
+const Controls = ({ onShirtChange, onClothingTypeChange, clothingType, onShirtUpload, onScreenshot, loading, hasUploadedShirt }) => {
   const fileInputRef = useRef(null)
   const [showDebug, setShowDebug] = useState(false)
 
@@ -12,6 +12,32 @@ const Controls = ({ onShirtChange, onShirtUpload, onScreenshot, loading, hasUplo
   return (
     <>
       <div className="controls">
+        {/* Clothing Type Selector */}
+        <div className="clothing-type-group">
+          <button 
+            className={`clothing-btn ${clothingType === 'shirt' ? 'active' : ''}`}
+            onClick={() => onClothingTypeChange('shirt')}
+            title="T-Shirt (1.4x shoulder width)"
+          >
+            👕 Shirt
+          </button>
+          <button 
+            className={`clothing-btn ${clothingType === 'pants' ? 'active' : ''}`}
+            onClick={() => onClothingTypeChange('pants')}
+            title="Pants (wider at hips)"
+          >
+            👖 Pants
+          </button>
+          <button 
+            className={`clothing-btn ${clothingType === 'jeans' ? 'active' : ''}`}
+            onClick={() => onClothingTypeChange('jeans')}
+            title="Jeans (similar to pants)"
+          >
+            👖 Jeans
+          </button>
+        </div>
+
+        {/* Shirt Selection */}
         <button 
           className="shirt-btn"
           onClick={() => onShirtChange('shirt1')}
