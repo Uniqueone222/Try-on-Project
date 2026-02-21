@@ -195,10 +195,16 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
 
+      // Mirror the canvas horizontally so the overlay matches a selfie/mirror view
+      ctx.save()
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+
       // Draw camera frame
       try {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       } catch (error) {
+        ctx.restore()
         console.warn('Failed to draw video frame:', error)
         return
       }
@@ -343,11 +349,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
         hipSpreadX1 = hipCenter - (hipWidth * currentConfig.hipSpreadFactor) / 2
         hipSpreadX2 = hipCenter + (hipWidth * currentConfig.hipSpreadFactor) / 2
 
-        console.log('Hip spread applied:', {
-          factor: currentConfig.hipSpreadFactor,
-          originalWidth: hipWidth.toFixed(0),
-          newWidth: (hipSpreadX2 - hipSpreadX1).toFixed(0)
-        })
+
       }
 
       // Only draw shirt if it loaded successfully
@@ -481,6 +483,9 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       } catch (error) {
         console.warn('Failed to draw shirt image:', error)
       }
+
+      // Restore the mirror transform
+      ctx.restore()
     } catch (error) {
       console.error('Pose detection processing error:', error)
     }
