@@ -8,6 +8,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
   const shirtRef = useRef(new Image())
   const shirtLoadedRef = useRef(false)
   const [shirtLoaded, setShirtLoaded] = useState(false)
+  const [refreshCounter, setRefreshCounter] = useState(0)
   const smoothValuesRef = useRef({
     width: 0,
     height: 0,
@@ -45,6 +46,15 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
     }
 
     initPose()
+  }, [])
+
+  // Refresh shirt image every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshCounter(prev => prev + 1)
+    }, 5000)
+
+    return () => clearInterval(interval)
   }, [])
 
   // Load shirt image
@@ -92,7 +102,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
       console.log(`[${timestamp}] Loading preset shirt: ${currentShirt}`)
       shirt.src = `${apiUrl}/shirts/${currentShirt}.png`
     }
-  }, [currentShirt, uploadedShirt])
+  }, [currentShirt, uploadedShirt, refreshCounter])
 
   // Start camera
   useEffect(() => {
