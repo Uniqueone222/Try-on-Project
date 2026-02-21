@@ -95,37 +95,33 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
     setShirtLoaded(false)
     shirtLoadedRef.current = false
     const shirt = shirtRef.current
-    
-    // Determine API URL based on hostname
-    // Always use HTTPS backend for production, HTTP localhost for dev
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    const apiUrl = isLocalhost 
-      ? 'http://localhost:8000'
-      : 'https://tryon-backend-ayjb.onrender.com'
-    
+
+    // Determine API URL from environment variable
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
     // Add timestamp to help identify effect calls
     const timestamp = Date.now()
     console.log(`[${timestamp}] Shirt loading effect triggered for: ${currentShirt}`)
     console.log(`[${timestamp}] Hostname: ${window.location.hostname}`)
     console.log(`[${timestamp}] Using API URL: ${apiUrl}`)
-    
+
     // Reset previous handlers
     shirt.onload = null
     shirt.onerror = null
-    
+
     shirt.onload = () => {
       console.log(`[${timestamp}] Shirt loaded: ${currentShirt}`)
       console.log(`[${timestamp}] Dimensions: ${shirt.naturalWidth}x${shirt.naturalHeight}`)
       setShirtLoaded(true)
       shirtLoadedRef.current = true
     }
-    
+
     shirt.onerror = (error) => {
       console.error(`[${timestamp}] Failed to load shirt ${currentShirt}:`, error)
       setShirtLoaded(false)
       shirtLoadedRef.current = false
     }
-    
+
     // Use uploaded shirt if available and selected
     if (currentShirt === 'custom' && uploadedShirt) {
       console.log(`[${timestamp}] Loading custom uploaded shirt: ${uploadedShirt.name}`)
@@ -210,16 +206,16 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       if (!results.poseLandmarks || results.poseLandmarks.length === 0) return
 
       const landmarks = results.poseLandmarks
-      
+
       // Draw pose landmarks visualization
       const canvasWidth = canvas.width
       const canvasHeight = canvas.height
-      
+
       // Draw skeleton connections
       ctx.strokeStyle = '#00FF00'
       ctx.lineWidth = 2
       ctx.fillStyle = '#00FF00'
-      
+
       // Key connections for skeleton
       const connections = [
         [11, 12], // shoulders
@@ -235,31 +231,31 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
         [24, 26], // right hip to knee
         [26, 28], // right knee to ankle
       ]
-      
+
       // Draw connections
       connections.forEach(([start, end]) => {
         const startLandmark = landmarks[start]
         const endLandmark = landmarks[end]
-        
-        if (startLandmark && endLandmark && 
-            startLandmark.visibility > 0.3 && endLandmark.visibility > 0.3) {
+
+        if (startLandmark && endLandmark &&
+          startLandmark.visibility > 0.3 && endLandmark.visibility > 0.3) {
           ctx.beginPath()
           ctx.moveTo(startLandmark.x * canvasWidth, startLandmark.y * canvasHeight)
           ctx.lineTo(endLandmark.x * canvasWidth, endLandmark.y * canvasHeight)
           ctx.stroke()
         }
       })
-      
+
       // Draw landmark points
       landmarks.forEach((landmark, idx) => {
         if (landmark.visibility > 0.3) {
           const x = landmark.x * canvasWidth
           const y = landmark.y * canvasHeight
-          
+
           ctx.beginPath()
           ctx.arc(x, y, 5, 0, 2 * Math.PI)
           ctx.fill()
-          
+
           // Draw confidence text for key points
           if ([11, 12, 23, 24].includes(idx)) {
             ctx.fillStyle = '#FFFFFF'
@@ -269,7 +265,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
           }
         }
       })
-      
+
       // Highlight shoulders and hips
       const leftShoulder = landmarks[11]
       const rightShoulder = landmarks[12]
@@ -298,9 +294,9 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
 
       // Calculate shoulder angle (rotation)
       const shoulderAngle = Math.atan2(shoulderY2 - shoulderY1, shoulderX2 - shoulderX1)
-      
+
       frameCountRef.current++
-      
+
       // Get wrist positions for sleeve angles (if visible)
       let leftWristX = shoulderX1
       let leftWristY = shoulderY1
@@ -308,13 +304,13 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       let rightWristY = shoulderY2
       let leftArmAngle = 0
       let rightArmAngle = 0
-      
+
       if (leftWrist && leftWrist.visibility > 0.1) {
         leftWristX = leftWrist.x * canvasWidth
         leftWristY = leftWrist.y * canvasHeight
         leftArmAngle = Math.atan2(leftWristY - shoulderY1, leftWristX - shoulderX1)
       }
-      
+
       if (rightWrist && rightWrist.visibility > 0.1) {
         rightWristX = rightWrist.x * canvasWidth
         rightWristY = rightWrist.y * canvasHeight
@@ -341,12 +337,12 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
         const hipX1 = leftHip.x * canvasWidth
         const hipX2 = rightHip.x * canvasWidth
         const hipWidth = Math.abs(hipX2 - hipX1)
-        
+
         // Apply hip spread factor (stretches hips for pants/jeans fit)
         const hipCenter = (hipX1 + hipX2) / 2
         hipSpreadX1 = hipCenter - (hipWidth * currentConfig.hipSpreadFactor) / 2
         hipSpreadX2 = hipCenter + (hipWidth * currentConfig.hipSpreadFactor) / 2
-        
+
         console.log('Hip spread applied:', {
           factor: currentConfig.hipSpreadFactor,
           originalWidth: hipWidth.toFixed(0),
@@ -370,32 +366,32 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
 
       // Calculate shirt positioning using proportions (if available) or default
       let targetWidth, targetHeight, targetX, targetY
-      
+
       const bodyShoulderWidth = Math.abs(shoulderX2 - shoulderX1)
       const centerX = (shoulderX1 + shoulderX2) / 2
-      
+
       // Check if this is a custom shirt with proportions
       if (currentShirt === 'custom' && uploadedShirt?.proportions) {
         const props = uploadedShirt.proportions
-        
+
         // Calculate shirt's shoulder width in normalized coordinates
         const shirtShoulderWidthNormalized = props.right_shoulder.x - props.left_shoulder.x
-        
+
         // Scale shirt so its shoulders match body shoulders
         // Body shoulder width / Shirt shoulder width = scale factor
         const scale = bodyShoulderWidth / (shirtShoulderWidthNormalized * shirt.naturalWidth)
-        
+
         targetWidth = shirt.naturalWidth * scale
         targetHeight = shirt.naturalHeight * scale
-        
+
         // Position so shirt's shoulder points align with body shoulders
         const shirtLeftShoulderX = props.left_shoulder.x * targetWidth
         targetX = centerX - shirtLeftShoulderX - (targetWidth / 2 - shirtLeftShoulderX)
-        
+
         // Align shirt's shoulder Y to body shoulder Y with slight offset
         const shirtShoulderY = props.left_shoulder.y * targetHeight
         targetY = shoulderY1 - shirtShoulderY
-        
+
         console.log('Using custom shirt proportions for alignment', {
           scale: scale.toFixed(2),
           bodyShoulderWidth: bodyShoulderWidth.toFixed(0),
@@ -419,16 +415,16 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       // Draw shirt with rotation based on shoulder angle
       try {
         ctx.save()
-        
+
         // Calculate rotation center (shoulder midpoint)
         const rotationCenterX = (shoulderX1 + shoulderX2) / 2
         const rotationCenterY = (shoulderY1 + shoulderY2) / 2
-        
+
         // Apply rotation transformation
         ctx.translate(rotationCenterX, rotationCenterY)
         ctx.rotate(shoulderAngle)
         ctx.translate(-rotationCenterX, -rotationCenterY)
-        
+
         // Draw shirt
         ctx.globalAlpha = 0.8
         ctx.drawImage(
@@ -439,49 +435,49 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
           smoothValuesRef.current.height
         )
         ctx.globalAlpha = 1
-        
+
         ctx.restore()
-        
+
         // Draw sleeves based on arm angles
         const sleeveLength = targetHeight * 0.4  // Sleeve extends from shoulder
         const sleeveWidth = targetWidth * 0.15   // Sleeve width relative to shirt
-        
+
         // Left sleeve (follows left arm)
         if (leftWrist && leftWrist.visibility > 0.1) {
           ctx.save()
           ctx.translate(shoulderX1, shoulderY1)
           ctx.rotate(leftArmAngle)
-          
+
           // Draw left sleeve
           ctx.fillStyle = 'rgba(100, 150, 255, 0.3)'  // Semi-transparent blue overlay
           ctx.fillRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
-          
+
           // Sleeve end outline
           ctx.strokeStyle = 'rgba(100, 150, 255, 0.6)'
           ctx.lineWidth = 2
           ctx.strokeRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
-          
+
           ctx.restore()
         }
-        
+
         // Right sleeve (follows right arm)
         if (rightWrist && rightWrist.visibility > 0.1) {
           ctx.save()
           ctx.translate(shoulderX2, shoulderY2)
           ctx.rotate(rightArmAngle)
-          
+
           // Draw right sleeve
           ctx.fillStyle = 'rgba(100, 150, 255, 0.3)'  // Semi-transparent blue overlay
           ctx.fillRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
-          
+
           // Sleeve end outline
           ctx.strokeStyle = 'rgba(100, 150, 255, 0.6)'
           ctx.lineWidth = 2
           ctx.strokeRect(0, -sleeveWidth / 2, sleeveLength, sleeveWidth)
-          
+
           ctx.restore()
         }
-        
+
       } catch (error) {
         console.warn('Failed to draw shirt image:', error)
       }

@@ -39,7 +39,7 @@ function App() {
 
     try {
       const reader = new FileReader()
-      
+
       reader.onload = async (e) => {
         const dataUrl = e.target?.result
         if (typeof dataUrl !== 'string') {
@@ -49,11 +49,7 @@ function App() {
         }
 
         try {
-          // Determine API URL
-          const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          const apiUrl = isLocalhost 
-            ? 'http://localhost:8000'
-            : 'https://tryon-backend-ayjb.onrender.com'
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
           // Send to backend for background removal and cropping
           console.log('Processing uploaded shirt...')
@@ -70,7 +66,7 @@ function App() {
           }
 
           const result = await response.json()
-          
+
           if (result.status === 'success') {
             setUploadedShirt({
               name: file.name,
@@ -90,18 +86,18 @@ function App() {
           setLoading(false)
         }
       }
-      
+
       reader.onerror = () => {
         setError('Failed to read file')
         setLoading(false)
       }
-      
+
       reader.readAsDataURL(file)
     } catch (err) {
       setError('Upload failed: ' + err.message)
       setLoading(false)
     }
-    
+
     // Reset input
     event.target.value = ''
   }
@@ -112,10 +108,9 @@ function App() {
     try {
       const canvas = document.querySelector('canvas')
       const imageData = canvas.toDataURL('image/png')
-      
-      // Get API URL from environment
+
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      
+
       // Send to backend for processing
       const response = await fetch(`${apiUrl}/screenshot`, {
         method: 'POST',
@@ -124,7 +119,7 @@ function App() {
         },
         body: JSON.stringify({ image: imageData })
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         console.log('Screenshot saved:', data.filename)
@@ -141,12 +136,12 @@ function App() {
   return (
     <div className="app-container">
       {error && <div className="error-message">{error}</div>}
-      <TryOnCanvas 
-        currentShirt={currentShirt} 
+      <TryOnCanvas
+        currentShirt={currentShirt}
         uploadedShirt={uploadedShirt}
         clothingType={clothingType}
       />
-      <Controls 
+      <Controls
         onShirtChange={changeShirt}
         onClothingTypeChange={changeClothingType}
         clothingType={clothingType}
