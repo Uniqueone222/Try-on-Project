@@ -14,7 +14,13 @@ app = FastAPI(title="Virtual Try-On Backend")
 # CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://tryon-backend.onrender.com",
+        "https://*.netlify.app",  # All Netlify deployments
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +41,22 @@ app.mount("/screenshots", StaticFiles(directory=SCREENSHOT_DIR), name="screensho
 async def health_check():
     """Health check endpoint"""
     return {"status": "ok", "service": "Virtual Try-On Backend"}
+
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "status": "running",
+        "service": "Virtual Try-On Backend API",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "screenshot": "/screenshot",
+            "screenshots": "/screenshots",
+            "process": "/process-image"
+        }
+    }
 
 
 @app.post("/screenshot")
@@ -164,4 +186,6 @@ async def list_screenshots():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
