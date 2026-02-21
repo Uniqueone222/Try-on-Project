@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Pose } from '@mediapipe/pose'
 import './TryOnCanvas.css'
 
 const TryOnCanvas = ({ currentShirt }) => {
@@ -25,8 +24,16 @@ const TryOnCanvas = ({ currentShirt }) => {
 
   useEffect(() => {
     const initPose = async () => {
-      const pose = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+      // Use global Pose from CDN
+      if (typeof window.Pose === 'undefined') {
+        console.error('MediaPipe Pose library not loaded')
+        return
+      }
+
+      const pose = new window.Pose({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        }
       })
 
       pose.setOptions({
