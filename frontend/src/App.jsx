@@ -13,7 +13,7 @@ function App() {
     setCurrentShirt(shirtId)
   }
 
-  const handleShirtUpload = (event) => {
+  const handleShirtUpload = async (event) => {
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -30,25 +30,72 @@ function App() {
     }
 
     setError(null)
-    const reader = new FileReader()
-    
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result
-      if (typeof dataUrl === 'string') {
-        setUploadedShirt({
-          name: file.name,
-          image: dataUrl
-        })
-        setCurrentShirt('custom')
-        console.log('Shirt uploaded:', file.name, 'Size:', file.size)
+    setLoading(true)
+
+    try {
+      const reader = new FileReader()
+      
+      reader.onload = async (e) => {
+        const dataUrl = e.target?.result
+        if (typeof dataUrl !== 'string') {
+          setError('Failed to read file')
+          setLoading(false)
+          return
+        }
+
+        try {
+          // Determine API URL
+          const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          const apiUrl = isLocalhost 
+            ? 'http://localhost:8000'
+            : 'https://tryon-backend-ayjb.onrender.com'
+
+          // Send to backend for background removal and cropping
+          console.log('Processing uploaded shirt...')
+          const response = await fetch(`${apiUrl}/process-shirt`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: dataUrl })
+          })
+
+          if (!response.ok) {
+            throw new Error('Backend processing failed')
+          }
+
+          const result = await response.json()
+          
+          if (result.status === 'success') {
+            setUploadedShirt({
+              name: file.name,
+              image: result.image, // Use processed image
+              proportions: result.proportions // Store shirt proportions for alignment
+            })
+            setCurrentShirt('custom')
+            console.log('Shirt processed successfully:', result.info)
+            console.log('Shirt proportions:', result.proportions)
+          } else {
+            setError('Failed to process shirt')
+          }
+        } catch (err) {
+          setError('Failed to process shirt: ' + err.message)
+          console.error(err)
+        } finally {
+          setLoading(false)
+        }
       }
+      
+      reader.onerror = () => {
+        setError('Failed to read file')
+        setLoading(false)
+      }
+      
+      reader.readAsDataURL(file)
+    } catch (err) {
+      setError('Upload failed: ' + err.message)
+      setLoading(false)
     }
-    
-    reader.onerror = () => {
-      setError('Failed to read file')
-    }
-    
-    reader.readAsDataURL(file)
     
     // Reset input
     event.target.value = ''

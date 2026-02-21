@@ -268,14 +268,49 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
         return
       }
 
-      const shirtAspectRatio = shirt.naturalHeight / shirt.naturalWidth
-      const targetWidth = shoulderWidth * 1.4
-      const targetHeight = targetWidth * shirtAspectRatio
+      // Calculate shirt positioning using proportions (if available) or default
+      let targetWidth, targetHeight, targetX, targetY
+      
+      const bodyShoulderWidth = Math.abs(shoulderX2 - shoulderX1)
       const centerX = (shoulderX1 + shoulderX2) / 2
-      const targetX = centerX - targetWidth / 2
-      const targetY = shoulderY1 - targetHeight * 0.15
+      
+      // Check if this is a custom shirt with proportions
+      if (currentShirt === 'custom' && uploadedShirt?.proportions) {
+        const props = uploadedShirt.proportions
+        
+        // Calculate shirt's shoulder width in normalized coordinates
+        const shirtShoulderWidthNormalized = props.right_shoulder.x - props.left_shoulder.x
+        
+        // Scale shirt so its shoulders match body shoulders
+        // Body shoulder width / Shirt shoulder width = scale factor
+        const scale = bodyShoulderWidth / (shirtShoulderWidthNormalized * shirt.naturalWidth)
+        
+        targetWidth = shirt.naturalWidth * scale
+        targetHeight = shirt.naturalHeight * scale
+        
+        // Position so shirt's shoulder points align with body shoulders
+        const shirtLeftShoulderX = props.left_shoulder.x * targetWidth
+        targetX = centerX - shirtLeftShoulderX - (targetWidth / 2 - shirtLeftShoulderX)
+        
+        // Align shirt's shoulder Y to body shoulder Y with slight offset
+        const shirtShoulderY = props.left_shoulder.y * targetHeight
+        targetY = shoulderY1 - shirtShoulderY
+        
+        console.log('Using custom shirt proportions for alignment', {
+          scale: scale.toFixed(2),
+          bodyShoulderWidth: bodyShoulderWidth.toFixed(0),
+          shirtTargetWidth: targetWidth.toFixed(0)
+        })
+      } else {
+        // Default alignment for preset shirts
+        const shirtAspectRatio = shirt.naturalHeight / shirt.naturalWidth
+        targetWidth = bodyShoulderWidth * 1.4
+        targetHeight = targetWidth * shirtAspectRatio
+        targetX = centerX - targetWidth / 2
+        targetY = shoulderY1 - targetHeight * 0.15
+      }
 
-      // Smooth values
+      // Smooth values for animation
       smoothValuesRef.current.width = smoothValuesRef.current.width * 0.7 + targetWidth * 0.3
       smoothValuesRef.current.height = smoothValuesRef.current.height * 0.7 + targetHeight * 0.3
       smoothValuesRef.current.x = smoothValuesRef.current.x * 0.7 + targetX * 0.3

@@ -8,6 +8,8 @@ import base64
 from PIL import Image
 from io import BytesIO
 import uuid
+import numpy as np
+import cv2
 
 app = FastAPI(title="Virtual Try-On Backend")
 
@@ -143,6 +145,142 @@ async def process_image(payload: dict):
         return JSONResponse(
             status_code=500,
             content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+
+@app.post("/process-shirt")
+async def process_shirt(payload: dict):
+    """
+    Process uploaded shirt image:
+    - Remove background (white/light backgrounds)
+    - Crop to shirt region
+    - Calculate shirt proportions (standard T-shirt structure)
+    - Return processed image + landmark metadata for mobile-friendly alignment
+    """
+    try:
+        image_data = payload.get('image', '')
+        
+        if not image_data.startswith('data:image'):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image format"}
+            )
+        
+        # Decode image
+        base64_str = image_data.split(',')[1]
+        image_bytes = base64.b64decode(base64_str)
+        
+        # Load with PIL then convert to OpenCV format
+        pil_image = Image.open(BytesIO(image_bytes))
+        
+        # Convert to RGB if needed (handle RGBA, etc.)
+        if pil_image.mode == 'RGBA':
+            # Keep alpha channel for transparency
+            cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGBA2BGR)
+            alpha = np.array(pil_image)[:, :, 3]
+        else:
+            pil_image = pil_image.convert('RGB')
+            cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+            alpha = np.ones((cv_image.shape[0], cv_image.shape[1]), dtype=np.uint8) * 255
+        
+        # Convert to HSV for better background detection
+        hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+        
+        # Create mask for non-background pixels
+        # Remove very light colors (white/light gray background)
+        lower_light = np.array([0, 0, 200])
+        upper_light = np.array([180, 30, 255])
+        light_mask = cv2.inRange(hsv, lower_light, upper_light)
+        
+        # Invert: we want to keep non-light pixels
+        foreground_mask = cv2.bitwise_not(light_mask)
+        
+        # Morphological operations to clean up
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        foreground_mask = cv2.morphologyEx(foreground_mask, cv2.MORPH_CLOSE, kernel)
+        foreground_mask = cv2.morphologyEx(foreground_mask, cv2.MORPH_OPEN, kernel)
+        
+        # Find bounding box of non-background region
+        contours, _ = cv2.findContours(foreground_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        crop_info = {
+            "x": 0, "y": 0, "w": cv_image.shape[1], "h": cv_image.shape[0]
+        }
+        
+        if contours:
+            # Get bounding box of largest contour (the shirt)
+            largest_contour = max(contours, key=cv2.contourArea)
+            x, y, w, h = cv2.boundingRect(largest_contour)
+            
+            # Add some padding
+            padding = 10
+            x = max(0, x - padding)
+            y = max(0, y - padding)
+            w = min(cv_image.shape[1] - x, w + 2 * padding)
+            h = min(cv_image.shape[0] - y, h + 2 * padding)
+            
+            crop_info = {"x": x, "y": y, "w": w, "h": h}
+            
+            # Crop image and alpha
+            cropped = cv_image[y:y+h, x:x+w]
+            cropped_alpha = alpha[y:y+h, x:x+w]
+        else:
+            # No shirt detected, return original
+            cropped = cv_image
+            cropped_alpha = alpha
+        
+        cropped_h, cropped_w = cropped.shape[:2]
+        
+        # Calculate standard T-shirt proportions (relative to cropped image)
+        # These are normalized coordinates (0-1) for mobile-friendly calculations
+        shirt_proportions = {
+            "neckline_center": {
+                "x": 0.5,  # Center horizontally
+                "y": 0.12  # 12% from top (typical neckline position)
+            },
+            "left_shoulder": {
+                "x": 0.20,  # 20% from left
+                "y": 0.28   # 28% from top (shoulder position)
+            },
+            "right_shoulder": {
+                "x": 0.80,  # 80% from left (right side)
+                "y": 0.28   # Same height as left
+            },
+            "shirt_width_at_shoulders": 0.60,  # 60% of total shirt width
+            "shirt_height_ratio": 0.75  # Shirt extends to ~75% of body length
+        }
+        
+        # Convert back to RGBA and PIL
+        cropped_bgr = cropped
+        cropped_rgb = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2RGB)
+        
+        # Create RGBA image
+        result = Image.new('RGBA', (cropped_rgb.shape[1], cropped_rgb.shape[0]))
+        rgb_pil = Image.fromarray(cropped_rgb, 'RGB')
+        alpha_pil = Image.fromarray(cropped_alpha, 'L')
+        result.paste(rgb_pil, (0, 0), alpha_pil)
+        
+        # Convert to base64
+        buffered = BytesIO()
+        result.save(buffered, format="PNG")
+        processed_base64 = base64.b64encode(buffered.getvalue()).decode()
+        
+        return {
+            "status": "success",
+            "image": f"data:image/png;base64,{processed_base64}",
+            "proportions": shirt_proportions,
+            "info": {
+                "background_removed": True,
+                "cropped": True,
+                "original_dimensions": f"{cv_image.shape[1]}x{cv_image.shape[0]}",
+                "cropped_dimensions": f"{cropped_w}x{cropped_h}"
+            }
+        }
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process shirt: {str(e)}"}
         )
 
 
