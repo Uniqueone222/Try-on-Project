@@ -20,8 +20,9 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:8000",
-        "https://tryon-backend.onrender.com",
-        "https://*.netlify.app",  # All Netlify deployments
+        "https://tryon-backend-ayjb.onrender.com",
+        "https://try-it-on-dude.netlify.app",  # Specific Netlify domain
+        "https://*.netlify.app",  # All Netlify deployments (wildcard)
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,6 +38,13 @@ os.makedirs(SHIRT_DIR, exist_ok=True)
 # Serve static files
 app.mount("/shirts", StaticFiles(directory=SHIRT_DIR), name="shirts")
 app.mount("/screenshots", StaticFiles(directory=SCREENSHOT_DIR), name="screenshots")
+
+
+# OPTIONS preflight handler for CORS
+@app.options("/{full_path:path}")
+async def preflight_handler(full_path: str):
+    """Handle CORS preflight requests"""
+    return {}
 
 
 @app.get("/health")
