@@ -299,14 +299,6 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
       // Calculate shoulder angle (rotation)
       const shoulderAngle = Math.atan2(shoulderY2 - shoulderY1, shoulderX2 - shoulderX1)
       
-      // Debug: Log angles periodically (every 30 frames)
-      if (frameCountRef.current % 30 === 0) {
-        console.log('Pose angles:', {
-          shoulderAngleDeg: (shoulderAngle * 180 / Math.PI).toFixed(1),
-          leftArmAngleDeg: (leftArmAngle * 180 / Math.PI).toFixed(1),
-          rightArmAngleDeg: (rightArmAngle * 180 / Math.PI).toFixed(1)
-        })
-      }
       frameCountRef.current++
       
       // Get wrist positions for sleeve angles (if visible)
@@ -327,6 +319,15 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
         rightWristX = rightWrist.x * canvasWidth
         rightWristY = rightWrist.y * canvasHeight
         rightArmAngle = Math.atan2(rightWristY - shoulderY2, rightWristX - shoulderX2)
+      }
+
+      // Debug: Log angles periodically (every 30 frames)
+      if (frameCountRef.current % 30 === 0) {
+        console.log('Pose angles:', {
+          shoulderAngleDeg: (shoulderAngle * 180 / Math.PI).toFixed(1),
+          leftArmAngleDeg: (leftArmAngle * 180 / Math.PI).toFixed(1),
+          rightArmAngleDeg: (rightArmAngle * 180 / Math.PI).toFixed(1)
+        })
       }
 
       const shoulderWidth = Math.abs(shoulderX2 - shoulderX1)
