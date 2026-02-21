@@ -6,6 +6,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
   const shirtRef = useRef(new Image())
+  const shirtLoadedRef = useRef(false)
   const [shirtLoaded, setShirtLoaded] = useState(false)
   const smoothValuesRef = useRef({
     width: 0,
@@ -49,12 +50,21 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
   // Load shirt image
   useEffect(() => {
     setShirtLoaded(false)
+    shirtLoadedRef.current = false
     const shirt = shirtRef.current
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    
+    // Determine API URL based on hostname
+    // Always use HTTPS backend for production, HTTP localhost for dev
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const apiUrl = isLocalhost 
+      ? 'http://localhost:8000'
+      : 'https://tryon-backend-ayjb.onrender.com'
     
     // Add timestamp to help identify effect calls
     const timestamp = Date.now()
     console.log(`[${timestamp}] Shirt loading effect triggered for: ${currentShirt}`)
+    console.log(`[${timestamp}] Hostname: ${window.location.hostname}`)
+    console.log(`[${timestamp}] Using API URL: ${apiUrl}`)
     
     // Reset previous handlers
     shirt.onload = null
@@ -64,11 +74,13 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
       console.log(`[${timestamp}] Shirt loaded: ${currentShirt}`)
       console.log(`[${timestamp}] Dimensions: ${shirt.naturalWidth}x${shirt.naturalHeight}`)
       setShirtLoaded(true)
+      shirtLoadedRef.current = true
     }
     
     shirt.onerror = (error) => {
       console.error(`[${timestamp}] Failed to load shirt ${currentShirt}:`, error)
       setShirtLoaded(false)
+      shirtLoadedRef.current = false
     }
     
     // Use uploaded shirt if available and selected
@@ -244,7 +256,7 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt }) => {
 
       // Only draw shirt if it loaded successfully
       const shirt = shirtRef.current
-      if (!shirtLoaded) {
+      if (!shirtLoadedRef.current) {
         console.warn('Shirt not loaded yet')
         return
       }
