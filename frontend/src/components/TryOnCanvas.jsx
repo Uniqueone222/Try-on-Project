@@ -427,14 +427,14 @@ const TryOnCanvas = ({ currentShirt, uploadedShirt, clothingType = 'shirt' }) =>
         ctx.rotate(shoulderAngle)
         ctx.translate(-rotationCenterX, -rotationCenterY)
 
-        // Draw shirt
+        // Draw shirt — negative height flips it vertically (fixes upside-down image)
         ctx.globalAlpha = 0.8
         ctx.drawImage(
           shirt,
           smoothValuesRef.current.x,
-          smoothValuesRef.current.y,
+          smoothValuesRef.current.y + smoothValuesRef.current.height,
           smoothValuesRef.current.width,
-          smoothValuesRef.current.height
+          -smoothValuesRef.current.height
         )
         ctx.globalAlpha = 1
 
